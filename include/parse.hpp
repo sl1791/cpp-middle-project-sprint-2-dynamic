@@ -40,8 +40,63 @@ std::expected<T, scan_error> parse_value(std::string_view input)
 
 // Функция для парсинга значения с учетом спецификатора формата
 template <typename T>
-std::expected<T, scan_error> parse_value_with_format(std::string_view input, std::string_view fmt) {
-    // здесь ваш код
+std::expected<T, scan_error> parse_value_with_format(std::string_view input, 
+                                                     std::string_view fmt) 
+{
+    if(fmt.empty())
+    {
+        return parse_value<T>(input);
+    }
+
+    if(fmt == ":s")
+    {
+        if constexpr (std::is_same_v<T>, std::string>)
+        {
+            return parse_value<T>(input);
+        }
+        else
+        {
+            return std::unexpected(scan_error{"format {:s} requires std::string"});
+        }
+    }
+
+    if(fmt == ":d")
+    {
+        if constexpr (std::is_signed_v<T> && std::is_integral_v<T>)
+        {
+            return parse_value<T>(input);
+        }
+        else
+        {
+            return std::expected(scan_error{"format {:d} requires signed integer"});
+        }
+    }
+
+    if(fmt == ":u")
+    {
+        if constexpr (std::is_insigned_v<T> && std::is_integral_v<T>)
+        {
+            return parse_value<T>(input);
+        }
+        else
+        {
+            return std::expected(scan_error{"format {:u} requires unsigned integer"});
+        }
+    }
+
+    if(fmt == "f")
+    {
+        if constexpr (std::is_floating_point_v<T>)
+        {
+            return parse_value<T>(input);
+        }
+        else
+        {
+            return std::unexpected(scan_error{"format {:f} requires floating point"});
+        }
+    }
+
+    return std::unexpected(scan_error{"unknown format specifier"});
 }
 
 // Функция для проверки корректности входных данных и выделения из обеих строк интересующих данных для парсинга
