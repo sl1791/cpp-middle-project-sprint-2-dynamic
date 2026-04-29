@@ -5,12 +5,38 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include <charconv>
+#include <type_traits>
 
 #include "types.hpp"
 
 namespace stdx::details {
 
 // здесь ваш код
+template <typename T>
+std::expected<T, scan_error> parse_value(std::string_view input)
+{
+    if constexpr (std::is_same_v<T, std::string>)
+    {
+        return std::string{input};
+    }
+    else
+    {
+        T value{};
+
+        const char* begin = input.data();
+        const char* end = input.data() + input.size();
+
+        auto[ptr, ec] = std::from_chars(begin, end, value);
+
+        if(ec != std::errc{} || ptr != end)
+        {
+            return std::unexpected(scan_error{"failed to parse value"});
+        }
+
+        return value;
+    }
+}
 
 // Функция для парсинга значения с учетом спецификатора формата
 template <typename T>
