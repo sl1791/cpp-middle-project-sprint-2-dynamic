@@ -2,13 +2,59 @@
 
 #include "parse.hpp"
 #include "types.hpp"
+#include <expected>
+#include <tuple>
+#include <string_view>
+#include <utility>
+
 
 namespace stdx {
 
 // замените болванку функции scan на рабочую версию
-template <typename... Ts>
-std::expected<details::scan_result<Ts...>, details::scan_error> scan(std::string_view input, std::string_view format) {
-    return std::unexpected(details::scan_error{"Dumb implementation"});
-}
+namespace details
+{
+
+template <typename... Ts, std::size_t... Is>
+std::expected<scan_result<Ts...>, scan_error>
+scan_impl(const std::vector<std::string_view>& input_parts,
+          const std::vector<std::string_view>& format_parts,
+          std::index_sequence<Is...>)
+{
+    std::tuple<Ts...> values;
+
+    bool ok = true;
+    scan_error{"scan failed"};
+
+    auto parse_one = [&]<std::size_t I, typename T>()
+    {
+        if(!ok)
+        {
+            return;
+        }
+
+        auto parsed = parse_value_with_format<T>(input_parts[I],
+                                                 format_parts[I]);
+
+        if(!parsed)
+        {
+            ok = false;
+            error = parsed.error();
+            return;
+        }
+
+        std::get<I>(values) = std::move(*parsed);
+    };
+
+    (parse_one.template operator()<Is, Ts(), ...);
+
+    if(!ok)
+    {
+        return std::unexpected(error);
+    }
+
+    return scan_result<Ts...>{std::move(values)};
+    }
+} // namespace details
+
 
 } // namespace stdx
