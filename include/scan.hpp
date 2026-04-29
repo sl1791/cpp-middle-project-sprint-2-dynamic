@@ -56,5 +56,31 @@ scan_impl(const std::vector<std::string_view>& input_parts,
     }
 } // namespace details
 
+template <typename... Ts>
+std::expected<details::scan_result<Ts...>, details::scan_error>
+scan(std::string_view input, std::string_view format)
+{
+    auto sources = details::parse_sources<Ts...>(input, format);
+
+    if(!sources)
+    {
+        return std::unexpected(sources.error());
+    }
+
+    auto& [format_parts, input_parts] = *sources;
+
+    if(input_parts.size() != sizeof...(Ts) ||
+       format_parts.size() != sizeof...(Ts))
+       {
+        return unexpected(details::scan_error("number of parsed values does 
+                                              not match number of types");)
+       }
+
+    return details::scan_impl<Ts...>(
+        input_parts,
+        format_parts,
+        std::index_sequence_for<Ts...>{}
+    );
+}
 
 } // namespace stdx
