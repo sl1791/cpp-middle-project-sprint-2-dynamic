@@ -7,6 +7,7 @@
 #include <vector>
 #include <charconv>
 #include <type_traits>
+#include <sstream>
 
 #include "types.hpp"
 
@@ -20,14 +21,35 @@ std::expected<T, scan_error> parse_value(std::string_view input)
     {
         return std::string{input};
     }
+    else if constexpr (std::is_floating_point_v<T>)
+    {
+        try
+        {
+            std::string str{input};
+            std::size_t pos = 0;
+
+            double parsed = std::stod(str, &pos);
+
+            if(pos != str.size())
+            {
+                return std::unexpected(scan_error{"failed to parse floating point value"});
+            }
+
+            return static_cast<T>(parsed);
+        }
+        catch (...)
+        {
+            return std::unexpected(scan_error{"failed to parse floating point value"});
+        }
+    }
     else
     {
-        T value{};
+        T value;
 
         const char* begin = input.data();
         const char* end = input.data() + input.size();
 
-        auto[ptr, ec] = std::from_chars(begin, end, value);
+        auto [ptr, ec] = std::from_chars(begin, end, value);
 
         if(ec != std::errc{} || ptr != end)
         {
@@ -50,7 +72,7 @@ std::expected<T, scan_error> parse_value_with_format(std::string_view input,
 
     if(fmt == ":s")
     {
-        if constexpr (std::is_same_v<T>, std::string>)
+        if constexpr (std::is_same_v<T, std::string>)
         {
             return parse_value<T>(input);
         }
@@ -68,23 +90,23 @@ std::expected<T, scan_error> parse_value_with_format(std::string_view input,
         }
         else
         {
-            return std::expected(scan_error{"format {:d} requires signed integer"});
+            return std::unexpected(scan_error{"format {:d} requires signed integer"});
         }
     }
 
     if(fmt == ":u")
     {
-        if constexpr (std::is_insigned_v<T> && std::is_integral_v<T>)
+        if constexpr (std::is_unsigned_v<T> && std::is_integral_v<T>)
         {
             return parse_value<T>(input);
         }
         else
         {
-            return std::expected(scan_error{"format {:u} requires unsigned integer"});
+            return std::unexpected(scan_error{"format {:u} requires unsigned integer"});
         }
     }
 
-    if(fmt == "f")
+    if(fmt == ":f")
     {
         if constexpr (std::is_floating_point_v<T>)
         {

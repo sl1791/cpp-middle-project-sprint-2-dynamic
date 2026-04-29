@@ -23,7 +23,7 @@ scan_impl(const std::vector<std::string_view>& input_parts,
     std::tuple<Ts...> values;
 
     bool ok = true;
-    scan_error{"scan failed"};
+    scan_error error{"scan failed"};
 
     auto parse_one = [&]<std::size_t I, typename T>()
     {
@@ -45,7 +45,7 @@ scan_impl(const std::vector<std::string_view>& input_parts,
         std::get<I>(values) = std::move(*parsed);
     };
 
-    (parse_one.template operator()<Is, Ts(), ...);
+    (parse_one.template operator()<Is, Ts>(), ...);
 
     if(!ok)
     {
@@ -72,8 +72,9 @@ scan(std::string_view input, std::string_view format)
     if(input_parts.size() != sizeof...(Ts) ||
        format_parts.size() != sizeof...(Ts))
        {
-        return unexpected(details::scan_error("number of parsed values does 
-                                              not match number of types");)
+        return std::unexpected(
+            details::scan_error{"number of parsed values does not match number of types"}
+            );
        }
 
     return details::scan_impl<Ts...>(
