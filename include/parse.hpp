@@ -5,6 +5,9 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include <charconv>
+#include <type_traits>
+#include <sstream>
 
 #include "types.hpp"
 
@@ -12,10 +15,185 @@ namespace stdx::details {
 
 // здесь ваш код
 
+template <typename T>
+using clean_t = std::remove_cv_t<std::remove_reference_t<T>>;
+
+template <typename T>
+concept StringLike = std::is_same_v<clean_t<T>, std::string> ||
+                     std::is_same_v<clean_t<T>, std::string_view>;
+
+template <typename T>
+concept SignedInteger = std::is_integral_v<clean_t<T>> &&
+                        std::is_signed_v<clean_t<T>> &&
+                        !std::is_same_v<clean_t<T>, bool>;
+
+template <typename T>
+concept UnsignedInteger = std::is_integral_v<clean_t<T>> &&
+                          std::is_unsigned_v<clean_t<T>> &&
+                          !std::is_same_v<clean_t<T>, bool>;
+
+template <typename T>
+concept FloatingPoint = std::is_floating_point_v<clean_t<T>>;
+
+template <typename T>
+concept SupportedScanType = StringLike<T> || SignedInteger<T> || 
+                            UnsignedInteger<T> || FloatingPoint<T>;
+
+template <SignedInteger T>
+std::expected<clean_t<T>, scan_error> parse_value(std::string_view  input)
+{
+    using ValueType = clean_t<T>;
+
+    std::int64_t temp = 0;
+
+    const char* begin = input.data();
+    const char* end = input.data() + input.size();
+
+    auto [ptr, ec] = std::from_chars(begin, end, temp);
+
+    if(ec != std::errc{} || ptr != end)
+    {
+        return std::unexpected(scan_error{"failed to parse signed integer"});
+    }
+    
+    if(temp < static_cast<std::int64_t>(std::numeric_limits<ValueType>::min()) ||
+       temp > static_cast<std::int64_t>(std::numeric_limits<ValueType>::max()))
+       {
+        return std::unexpected(scan_error{"signed integer is out  of ranges"});
+       }
+
+    return static_cast<ValueType>(temp);
+}
+
+
+template <UnsignedInteger T>
+std::expected<clean_t<T>, scan_error> parse_value(std::string_view input)
+{
+    using ValueType = clean_t<T>;
+
+    if(input.empty() || input.front() == '-')
+    {
+        return std::unexpected(scan_error{"failed to parse unsigned integer"});
+    }
+
+    ValueType value{};
+
+    const char* begin = input.data();
+    const char* end = input.data() + input.size();
+
+    auto [ptr, ec] = std::from_chars(begin, end, value);
+
+    if(ec != std::errc{} || ptr != end)
+    {
+        return std::unexpected(scan_error{"failed to parse unsigned integer"});
+    }
+
+    return value;
+}
+
+template <FloatingPoint T>
+std::expected<clean_t<T>, scan_error> parse_value(std::string_view input)
+{
+    using ValueType = clean_t<T>;
+
+    ValueType value{};
+
+    const char* begin = input.data();
+    const char* end = input.data() + input.size();
+
+    auto [ptr, ec] = std::from_chars(begin, end, value);
+
+    if(ec != std::errc{} || ptr != end)
+    {
+        return std::unexpected(scan_error{"failed to parse floating point"});
+    }
+
+    return value;
+}
+
+template <StringLike T>
+std::expected<clean_t<T>, scan_error> parse_value(std::string_view input)
+{
+    using ValueType = clean_t<T>;
+
+    if constexpr (std::is_same_v<ValueType, std::string>)
+    {
+        return std::string{input};
+    }
+    else
+    {
+        return input;
+    }
+}
+
+template <typename T>
+    requires (!SupportedScanType<T>)
+std::expected<clean_t<T>, scan_error> parse_value(std::string_view)
+{
+    return std::unexpected(scan_error{"unsupported scan type"});
+}
+
 // Функция для парсинга значения с учетом спецификатора формата
 template <typename T>
-std::expected<T, scan_error> parse_value_with_format(std::string_view input, std::string_view fmt) {
-    // здесь ваш код
+std::expected<clean_t<T>, scan_error> parse_value_with_format(std::string_view input, 
+                                                     std::string_view fmt) 
+{
+    using ValueType = clean_t<T>;
+
+    if(fmt.empty())
+    {
+        return parse_value<ValueType>(input);
+    }
+
+    if(fmt == ":s")
+    {
+        if constexpr (StringLike<ValueType>)
+        {
+            return parse_value<ValueType>(input);
+        }
+        else
+        {
+            return std::unexpected(scan_error{"format {:s} requires std::string"});
+        }
+    }
+
+    if(fmt == ":d")
+    {
+        if constexpr (SignedInteger<ValueType>)
+        {
+            return parse_value<ValueType>(input);
+        }
+        else
+        {
+            return std::unexpected(scan_error{"format {:d} requires signed integer"});
+        }
+    }
+
+    if(fmt == ":u")
+    {
+        if constexpr (UnsignedInteger<ValueType>)
+        {
+            return parse_value<ValueType>(input);
+        }
+        else
+        {
+            return std::unexpected(scan_error{"format {:u} requires unsigned integer"});
+        }
+    }
+
+    if(fmt == ":f")
+    {
+        if constexpr (FloatingPoint<ValueType>)
+        {
+            return parse_value<ValueType>(input);
+        }
+        else
+        {
+            return std::unexpected(scan_error{"format {:f} requires floating point"});
+        }
+    }
+
+    return std::unexpected(scan_error{"unknown format specifier"});
 }
 
 // Функция для проверки корректности входных данных и выделения из обеих строк интересующих данных для парсинга
