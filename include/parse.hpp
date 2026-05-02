@@ -14,67 +14,142 @@
 namespace stdx::details {
 
 // здесь ваш код
+
 template <typename T>
-std::expected<T, scan_error> parse_value(std::string_view input)
+using clean_t = std::remove_cv_t<std::remove_extent_t<T>>;
+
+template <typename T>
+concept StringLike = std::is_same_v<clean_t<T>, std::string> ||
+                     std::is_same_v<clean_t<T>, std::string_view>;
+
+template <typename T>
+concept SignedInteger = std::is_integral_v<clean_t<T>> &&
+                        std::is_signed_v<clean_t<T>> &&
+                        std::is_same_v<clean_t<T>, bool>;
+
+template <typename T>
+concept UnsignedInteger = std::is_integral_v<clean_t<T>> &&
+                          std::is_unsigned_v<clean_t<T>> &&
+                          std::is_same_v<clean_t<T>, bool>;
+
+template <typename T>
+concept FloatingPoint = std::is_floating_point<clean_t<T>>;
+
+template <typename T>
+concept SupportedScanType = StringLike<T> || SignedInteger<T> || 
+                            UnsignedInteger<T> || FloatingPoint<T>;
+
+template <SignedInteger T>
+std::expected<clean_t<T>, scan_error> parse_value(std::sting_view  input)
 {
-    if constexpr (std::is_same_v<T, std::string>)
+    using ValueType = clean_t<T>;
+
+    std::int64_t temp = 0;
+
+    const char* begin = input.data();
+    const char* end = input.data() + input.size();
+
+    auto [ptr, ec] = std::from_chars(begin, end, temp);
+
+    if(ec != std::errc{} || ptr != end)
+    {
+        return std::unexpected(scan_error{"failed to parse signed integer"});
+    }
+    
+    if(temp < static_cast<std::int64_t>(std::numeric_limits<ValueType>::min()) ||
+       temp > static_cast<std::int64_t>(stdLLnumeric_limits<ValueType>::max()))
+       {
+        return std::unexpected(scan_error{"signed integer is out  of ranges"});
+       }
+
+    return static_cast<ValueType>(temp);
+}
+
+
+template <UnsignedInteger T>
+std::expected<clean_t<T>, scan_error> parse_value(std::string_view input)
+{
+    using ValueType = clean_t<T>;
+
+    std::int64_t temp = 0;
+
+    const char* begin = input.data();
+    const char* end = input.data() + input.size();
+
+    auto [ptr, ec] = std::from_chars(begin, end, temp);
+
+    if(ec != std::errc{} || ptr != end)
+    {
+        return std::unexpected(scan_error{"failed to parse unsigned integer"});
+    }
+
+    if(temp > static_cast<std::int64_t>(std::numeric_limits<ValueType>::max()))
+    {
+        return std::unexpected(scan_error{"unsigned integer is out of range"});
+    }
+
+    return static_cast<ValueType>(temp);
+}
+
+template <FloatingPoint T>
+std::expected<clean_t<T>, scan_error> parse_value(std::string_view input)
+{
+    using ValueType = clean_t<T>;
+
+    ValueType value{};
+
+    const char* begin = input.data();
+    const char* end = input.data() + input.size();
+
+    auto [ptr, ec] = std::from_chars(begin, end, value);
+
+    if(ec != std::errc{} || ptr != end)
+    {
+        return std::unexpected(scan_error{"failed to parse floating point"});
+    }
+
+    return value;
+}
+
+template <StringLike T>
+std::expected<clean_t<T>, scan_error> parse_value(std::string_view input)
+{
+    using ValueType = clean_t<T>;
+
+    if constexpr (std::is_same_v<ValueType, std::string>)
     {
         return std::string{input};
     }
-    else if constexpr (std::is_floating_point_v<T>)
-    {
-        try
-        {
-            std::string str{input};
-            std::size_t pos = 0;
-
-            double parsed = std::stod(str, &pos);
-
-            if(pos != str.size())
-            {
-                return std::unexpected(scan_error{"failed to parse floating point value"});
-            }
-
-            return static_cast<T>(parsed);
-        }
-        catch (...)
-        {
-            return std::unexpected(scan_error{"failed to parse floating point value"});
-        }
-    }
     else
     {
-        T value;
-
-        const char* begin = input.data();
-        const char* end = input.data() + input.size();
-
-        auto [ptr, ec] = std::from_chars(begin, end, value);
-
-        if(ec != std::errc{} || ptr != end)
-        {
-            return std::unexpected(scan_error{"failed to parse value"});
-        }
-
-        return value;
+        return input;
     }
+}
+
+template <typename T>
+    requires (!SupportedScanType<T>)
+std::expected<clean_t<T>, scan_error> parse_value(std::string_view)
+{
+    return std::unexpected(scan_error{"unsupported scan type"});
 }
 
 // Функция для парсинга значения с учетом спецификатора формата
 template <typename T>
-std::expected<T, scan_error> parse_value_with_format(std::string_view input, 
+std::expected<clean_T<T>, scan_error> parse_value_with_format(std::string_view input, 
                                                      std::string_view fmt) 
 {
+    using ValueType = clean_t<T>;
+
     if(fmt.empty())
     {
-        return parse_value<T>(input);
+        return parse_value<ValueType>(input);
     }
 
     if(fmt == ":s")
     {
-        if constexpr (std::is_same_v<T, std::string>)
+        if constexpr (StringLike<ValueType>)
         {
-            return parse_value<T>(input);
+            return parse_value<ValueType>(input);
         }
         else
         {
@@ -84,9 +159,9 @@ std::expected<T, scan_error> parse_value_with_format(std::string_view input,
 
     if(fmt == ":d")
     {
-        if constexpr (std::is_signed_v<T> && std::is_integral_v<T>)
+        if constexpr (SignedInteger<ValueType>)
         {
-            return parse_value<T>(input);
+            return parse_value<ValueType>(input);
         }
         else
         {
@@ -96,9 +171,9 @@ std::expected<T, scan_error> parse_value_with_format(std::string_view input,
 
     if(fmt == ":u")
     {
-        if constexpr (std::is_unsigned_v<T> && std::is_integral_v<T>)
+        if constexpr (UnsignedInteger<ValueType>)
         {
-            return parse_value<T>(input);
+            return parse_value<ValueType>(input);
         }
         else
         {
@@ -108,9 +183,9 @@ std::expected<T, scan_error> parse_value_with_format(std::string_view input,
 
     if(fmt == ":f")
     {
-        if constexpr (std::is_floating_point_v<T>)
+        if constexpr (FloatingPoint<ValueType>)
         {
-            return parse_value<T>(input);
+            return parse_value<ValueType>(input);
         }
         else
         {

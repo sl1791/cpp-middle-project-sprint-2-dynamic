@@ -20,7 +20,7 @@ scan_impl(const std::vector<std::string_view>& input_parts,
           const std::vector<std::string_view>& format_parts,
           std::index_sequence<Is...>)
 {
-    std::tuple<Ts...> values;
+    typename scan_result<Ts...>::tuple_type values;
 
     bool ok = true;
     scan_error error{"scan failed"};
