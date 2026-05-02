@@ -13,13 +13,18 @@ struct scan_error {
 
 // Шаблонный класс для хранения результатов успешного сканирования
 
+template <typename T>
+using scan_value_t = std::remove_cv_t<std::remove_reference_t<T>>;
+
 template <typename... Ts>
 struct scan_result {
-    std::tuple<Ts...> values;
+    using tuple_type = std::tuple<scan_value_t<Ts>...>;
+
+    tuple_type values;
 
     scan_result() = default;
 
-    explicit scan_result(std::tuple<Ts...> tuple) : values(std::move(tuple)) {}
+    explicit scan_result(tuple_type tuple) : values(std::move(tuple)) {}
 
     scan_result(Ts... args) : values(std::move(args)...) {}
 };
