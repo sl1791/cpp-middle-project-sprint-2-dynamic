@@ -16,7 +16,7 @@ namespace stdx::details {
 // здесь ваш код
 
 template <typename T>
-using clean_t = std::remove_cv_t<std::remove_extent_t<T>>;
+using clean_t = std::remove_cv_t<std::remove_reference_t<T>>;
 
 template <typename T>
 concept StringLike = std::is_same_v<clean_t<T>, std::string> ||
@@ -25,22 +25,22 @@ concept StringLike = std::is_same_v<clean_t<T>, std::string> ||
 template <typename T>
 concept SignedInteger = std::is_integral_v<clean_t<T>> &&
                         std::is_signed_v<clean_t<T>> &&
-                        std::is_same_v<clean_t<T>, bool>;
+                        !std::is_same_v<clean_t<T>, bool>;
 
 template <typename T>
 concept UnsignedInteger = std::is_integral_v<clean_t<T>> &&
                           std::is_unsigned_v<clean_t<T>> &&
-                          std::is_same_v<clean_t<T>, bool>;
+                          !std::is_same_v<clean_t<T>, bool>;
 
 template <typename T>
-concept FloatingPoint = std::is_floating_point<clean_t<T>>;
+concept FloatingPoint = std::is_floating_point_v<clean_t<T>>;
 
 template <typename T>
 concept SupportedScanType = StringLike<T> || SignedInteger<T> || 
                             UnsignedInteger<T> || FloatingPoint<T>;
 
 template <SignedInteger T>
-std::expected<clean_t<T>, scan_error> parse_value(std::sting_view  input)
+std::expected<clean_t<T>, scan_error> parse_value(std::string_view  input)
 {
     using ValueType = clean_t<T>;
 
@@ -57,7 +57,7 @@ std::expected<clean_t<T>, scan_error> parse_value(std::sting_view  input)
     }
     
     if(temp < static_cast<std::int64_t>(std::numeric_limits<ValueType>::min()) ||
-       temp > static_cast<std::int64_t>(stdLLnumeric_limits<ValueType>::max()))
+       temp > static_cast<std::int64_t>(std::numeric_limits<ValueType>::max()))
        {
         return std::unexpected(scan_error{"signed integer is out  of ranges"});
        }
@@ -71,24 +71,24 @@ std::expected<clean_t<T>, scan_error> parse_value(std::string_view input)
 {
     using ValueType = clean_t<T>;
 
-    std::int64_t temp = 0;
+    if(input.empty() || input.front() == '-')
+    {
+        return std::unexpected(scan_error{"failed to parse unsigned integer"});
+    }
+
+    ValueType value{};
 
     const char* begin = input.data();
     const char* end = input.data() + input.size();
 
-    auto [ptr, ec] = std::from_chars(begin, end, temp);
+    auto [ptr, ec] = std::from_chars(begin, end, value);
 
     if(ec != std::errc{} || ptr != end)
     {
         return std::unexpected(scan_error{"failed to parse unsigned integer"});
     }
 
-    if(temp > static_cast<std::int64_t>(std::numeric_limits<ValueType>::max()))
-    {
-        return std::unexpected(scan_error{"unsigned integer is out of range"});
-    }
-
-    return static_cast<ValueType>(temp);
+    return value;
 }
 
 template <FloatingPoint T>
@@ -135,7 +135,7 @@ std::expected<clean_t<T>, scan_error> parse_value(std::string_view)
 
 // Функция для парсинга значения с учетом спецификатора формата
 template <typename T>
-std::expected<clean_T<T>, scan_error> parse_value_with_format(std::string_view input, 
+std::expected<clean_t<T>, scan_error> parse_value_with_format(std::string_view input, 
                                                      std::string_view fmt) 
 {
     using ValueType = clean_t<T>;
