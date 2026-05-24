@@ -16,12 +16,16 @@ void Print(const T& a_T)
 
 ///////////////////////////////////////////////////////////////////////////////
 // StringScanTest
-TEST(StringScanTest, EmptyFormat) 
+TEST(StringTest, EmptyFormat) 
 {
     const char* value = "text";
     auto result = stdx::scan<std::string>(value, "{}");
     ASSERT_TRUE(result);
     ASSERT_EQ(result.value().vals, std::make_tuple(std::string(value)));
+
+    auto result2 = stdx::scan<const std::string>(value, "{}");
+    ASSERT_TRUE(result2);
+    ASSERT_EQ(result2.value().vals, std::make_tuple(std::string(value)));
 
     // if (result)
     // {
@@ -33,21 +37,32 @@ TEST(StringScanTest, EmptyFormat)
 
 }
 
-TEST(StringScanTest, Format) 
+TEST(StringTest, Format) 
 {
     const char* value = "text";
-    auto result = stdx::scan<std::string>(value, "{%s}");
+    constexpr const char* frm = "{%s}";
+    auto result = stdx::scan<std::string>(value, frm);
     ASSERT_TRUE(result);
     ASSERT_EQ(result.value().vals, std::make_tuple(std::string(value)));
+
+    auto result2 = stdx::scan<const std::string>(value, frm);
+    ASSERT_TRUE(result2);
+    ASSERT_EQ(result2.value().vals, std::make_tuple(std::string(value)));
 }
 
 TEST(StringTest, ComplexFormat) 
 {
     const char* value = "text";
+    constexpr const char* frm = "something is {%s}";
+
     std::string text = std::format("something is {}", value);
-    auto result = stdx::scan<std::string>(text.data(), "something is {%s}");
+    auto result = stdx::scan<std::string>(text.data(), frm);
     ASSERT_TRUE(result);
     ASSERT_EQ(result.value().vals, std::make_tuple(std::string(value)));
+
+    auto result2 = stdx::scan<const std::string>(text.data(), frm);
+    ASSERT_TRUE(result2);
+    ASSERT_EQ(result2.value().vals, std::make_tuple(std::string(value)));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -58,23 +73,39 @@ TEST(StringViewScanTest, EmptyFormat)
     auto result = stdx::scan<std::string_view>(value, "{}");
     ASSERT_TRUE(result);
     ASSERT_EQ(result.value().vals, std::make_tuple(std::string_view(value)));
+
+    auto result2 = stdx::scan<const std::string_view>(value, "{}");
+    ASSERT_TRUE(result2);
+    ASSERT_EQ(result2.value().vals, std::make_tuple(std::string_view(value)));
 }
 
 TEST(StringViewScanTest, Format) 
 {
     const char* value = "text";
-    auto result = stdx::scan<std::string_view>(value, "{%s}");
+    constexpr const char* frm = "{%s}";
+
+    auto result = stdx::scan<std::string_view>(value, frm);
     ASSERT_TRUE(result);
     ASSERT_EQ(result.value().vals, std::make_tuple(std::string_view(value)));
+
+    auto result2 = stdx::scan<const std::string_view>(value, frm);
+    ASSERT_TRUE(result2);
+    ASSERT_EQ(result2.value().vals, std::make_tuple(std::string_view(value)));
 }
 
 TEST(StringViewScanTest, ComplexFormat) 
 {
     const char* value = "text";
+    constexpr const char* frm = "something is {%s}";
+
     std::string text = std::format("something is {}", value);
-    auto result = stdx::scan<std::string_view>(text.data(), "something is {%s}");
+    auto result = stdx::scan<std::string_view>(text.data(), frm);
     ASSERT_TRUE(result);
     ASSERT_EQ(result.value().vals, std::make_tuple(std::string_view(value)));
+
+    auto result2 = stdx::scan<const std::string_view>(text.data(), frm);
+    ASSERT_TRUE(result2);
+    ASSERT_EQ(result2.value().vals, std::make_tuple(std::string_view(value)));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -86,24 +117,40 @@ TEST(int8_tScanTest, EmptyFormat)
     auto result = stdx::scan<int8_t>(text.data(), "{}");
     ASSERT_TRUE(result);
     ASSERT_EQ(result.value().vals, std::make_tuple(int8_t(10)));
+
+    auto result2 = stdx::scan<const int8_t>(text.data(), "{}");
+    ASSERT_TRUE(result2);
+    ASSERT_EQ(result2.value().vals, std::make_tuple(int8_t(10)));
 }
 
 TEST(int8_tScanTest, Format) 
 {
     const int8_t val = 10;
     std::string text = std::format("{}", val);
-    auto result = stdx::scan<int8_t>(text.data(), "{%d}");
+    constexpr const char* frm = "{%d}";
+
+    auto result = stdx::scan<int8_t>(text.data(), frm);
     ASSERT_TRUE(result);
     ASSERT_EQ(result.value().vals, std::make_tuple(int8_t(10)));
+
+    auto result2 = stdx::scan<const int8_t>(text.data(), frm);
+    ASSERT_TRUE(result2);
+    ASSERT_EQ(result2.value().vals, std::make_tuple(int8_t(10)));
 }
 
 TEST(int8_tScanTest, ComplexFormat) 
 {
     const int8_t val = 10;
     std::string text = std::format("something is {}", val);
-    auto result = stdx::scan<int8_t>(text.data(), "something is {%d}");
+    constexpr const char* frm = "something is {%d}";
+
+    auto result = stdx::scan<int8_t>(text.data(), frm);
     ASSERT_TRUE(result);
     ASSERT_EQ(result.value().vals, std::make_tuple(int8_t(10)));
+
+    auto result2 = stdx::scan<const int8_t>(text.data(), frm);
+    ASSERT_TRUE(result2);
+    ASSERT_EQ(result2.value().vals, std::make_tuple(int8_t(10)));
 }
 
 TEST(int8_tScanTest, WrongFormat) 
@@ -112,6 +159,9 @@ TEST(int8_tScanTest, WrongFormat)
     std::string text = std::format("{}", val);
     auto result = stdx::scan<int8_t>(text.data(), "{%u}");
     ASSERT_FALSE(result);
+
+    auto result2 = stdx::scan<const int8_t>(text.data(), "{%u}");
+    ASSERT_FALSE(result2);
 }
 
 // ///////////////////////////////////////////////////////////////////////////////
@@ -121,11 +171,16 @@ TEST(doubleScanTest, EmptyFormat)
     using testType = double;
     const testType val = 100.72;
     std::string text = std::format("{}", val);
-    auto result = stdx::scan<testType>(text.data(), "{}");
 
+    auto result = stdx::scan<testType>(text.data(), "{}");
     ASSERT_TRUE(result);
     const bool isSame = abs(val - std::get<0>(result.value().vals)) < 0.000001;
     ASSERT_TRUE(isSame);
+
+    auto result2 = stdx::scan<const testType>(text.data(), "{}");
+    ASSERT_TRUE(result2);
+    const bool isSame2 = abs(val - std::get<0>(result2.value().vals)) < 0.000001;
+    ASSERT_TRUE(isSame2);
 }
 
 TEST(doubleScanTest, ComplexFormat) 
@@ -133,10 +188,18 @@ TEST(doubleScanTest, ComplexFormat)
     using testType = double;
     const testType val = -101.77;
     std::string text = std::format("something is {}", val);
-    auto result = stdx::scan<testType>(text.data(), "something is {%f}");
+    constexpr const char* frm = "something is {%f}";
+
+    auto result = stdx::scan<testType>(text.data(), frm);
     ASSERT_TRUE(result);
     const bool isSame = abs(val - std::get<0>(result.value().vals)) < 0.000001;
     ASSERT_TRUE(isSame);
+
+    auto result2 = stdx::scan<const testType>(text.data(), frm);
+    ASSERT_TRUE(result2);
+    const bool isSame2 = abs(val - std::get<0>(result2.value().vals)) < 0.000001;
+    ASSERT_TRUE(isSame2);
+
 }
 
 TEST(doubleScanTest, WrongFormat) 
@@ -144,25 +207,21 @@ TEST(doubleScanTest, WrongFormat)
     using testType = double;
     const testType val = 101.77;
     std::string text = std::format("{}", val);
+
     auto result = stdx::scan<testType>(text.data(), "{%s}");
     ASSERT_FALSE(result);
+
+    auto result2 = stdx::scan<testType>(text.data(), "{%s}");
+    ASSERT_FALSE(result2);
 }
 
 
-// ///////////////////////////////////////////////////////////////////////////////
-// // doubleScanTest
-template<typename Tpl, typename Val, size_t TplIndex>
-bool isSame(Tpl a_Tpl, Val v1)
-{
-    return !(v1 - std::get<0>(a_Tpl));
-}
-
+///////////////////////////////////////////////////////////////////////////////
+// ScanTest
 TEST(ScanTest, Format) 
 {
     using intType = int;
     using uintType = uint32_t;
-    // using dblType = double;
-    // using fltType = float;
     using strType = std::string;
     using strViewType = std::string_view;
 
@@ -186,4 +245,14 @@ TEST(ScanTest, Format)
     ASSERT_TRUE(result);
     auto tpl = std::make_tuple(v1, v2, v3, v4, v9, v10, v11, v12);
     ASSERT_EQ(result.value().vals, tpl);
+
+    auto result2 = stdx::scan<const intType, const intType, 
+                        const uintType, const uintType,
+                        const strType, const strType, 
+                        const strViewType, const strViewType>
+                        (text.data(), frmt);
+    ASSERT_TRUE(result2);
+    auto tpl2 = std::make_tuple(v1, v2, v3, v4, v9, v10, v11, v12);
+    ASSERT_EQ(result.value().vals, tpl2);
+
 }

@@ -42,13 +42,14 @@ scan(std::string_view input, std::string_view format)
     cvec& form = psrRes.value().first;
     cvec& inp = psrRes.value().second; 
 
-    details::scan_result<Ts...> scanRes;
+    using Tpl = std::tuple<std::remove_cv_t<Ts>...>;
+    Tpl scanRes;
     std::unique_ptr<details::scan_error> err = 
-        ScanVals<std::tuple<Ts...>, Ts...>(scanRes.vals, inp, form);
+        ScanVals<Tpl, std::remove_cv_t<Ts>...>(scanRes, inp, form);
     if(err)
         return std::unexpected(*err);
 
-    return scanRes;
+    return details::scan_result<Ts...>{.vals = scanRes};
 }
 
 } // namespace stdx
