@@ -5,6 +5,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include <regex>
 
 #include "types.hpp"
 
@@ -12,16 +13,90 @@ namespace stdx::details {
 
 // здесь ваш код
 
+template<typename T>
+static constexpr bool IsNumberFormat(const std::string_view& s) 
+requires std::is_same_v<T, int8_t> ||
+        std::is_same_v<T, int16_t> ||
+        std::is_same_v<T, int32_t> ||
+        std::is_same_v<T, int64_t> 
+{
+    static const std::regex pattern(R"(^(\s*|%d)$)");
+    return std::regex_match(std::string(s), pattern);
+}
+
+template<typename T>
+static constexpr bool IsNumberFormat(const std::string_view& s) 
+requires std::is_same_v<T, uint8_t> ||
+        std::is_same_v<T, uint16_t> ||
+        std::is_same_v<T, uint32_t> ||
+        std::is_same_v<T, uint64_t> 
+{
+    static const std::regex pattern(R"(^(\s*|%u)$)");
+    return std::regex_match(std::string(s), pattern);
+}
+
+template<typename T>
+static constexpr bool IsNumberFormat(const std::string_view& s) 
+requires std::is_same_v<T, float> ||
+        std::is_same_v<T, double>
+{
+    static const std::regex pattern(R"(^(\s*|%f)$)");
+    return std::regex_match(std::string(s), pattern);
+}
+
+template<typename T>
+static constexpr bool IsStringFormat(const std::string_view& s) 
+requires std::is_same_v<T, std::string> || 
+    std::is_same_v<T, std::string_view>
+{
+    static const std::regex pattern(R"(^(\s*|%s)$)");
+    return std::regex_match(std::string(s), pattern);
+}
+
 // Функция для парсинга значения с учетом спецификатора формата
 template <typename T>
-std::expected<T, scan_error> parse_value_with_format(std::string_view input, std::string_view fmt) {
-    // здесь ваш код
+std::expected<T, scan_error> parse_value_with_format(std::string_view input, std::string_view fmt) 
+requires std::is_same_v<T, int8_t> ||
+        std::is_same_v<T, int16_t> ||
+        std::is_same_v<T, int32_t> ||
+        std::is_same_v<T, int64_t> ||
+        std::is_same_v<T, uint8_t> ||
+        std::is_same_v<T, uint16_t> ||
+        std::is_same_v<T, uint32_t> ||
+        std::is_same_v<T, uint64_t> ||
+        std::is_same_v<T, float> ||
+        std::is_same_v<T, double>
+{
+
+    if (!IsNumberFormat<T>(fmt)) 
+        return std::unexpected(scan_error{std::format("'{}' format does not match a numeric data type.", fmt)});
+            
+    T val = {};
+    auto result = std::from_chars(input.data(), input.data() + input.size(), val);
+    if (result.ec == std::errc()) 
+        return val;
+
+    std::string str = std::format("The value '{}' does not match the specified data type.", input);
+    return std::unexpected(scan_error{str});
+}
+
+template <typename T>
+std::expected<T, scan_error> parse_value_with_format(std::string_view input, std::string_view fmt) 
+requires std::is_same_v<T, std::string> || 
+    std::is_same_v<T, std::string_view>
+{
+    if (!IsStringFormat<T>(fmt)) 
+        return std::unexpected(scan_error{std::format("'{}' format does not match a string data type.", fmt)});
+
+    T val(input);
+    return val;
 }
 
 // Функция для проверки корректности входных данных и выделения из обеих строк интересующих данных для парсинга
 template <typename... Ts>
 std::expected<std::pair<std::vector<std::string_view>, std::vector<std::string_view>>, scan_error>
 parse_sources(std::string_view input, std::string_view format) {
+
     std::vector<std::string_view> format_parts;  // Части формата между {}
     std::vector<std::string_view> input_parts;
     size_t start = 0;
