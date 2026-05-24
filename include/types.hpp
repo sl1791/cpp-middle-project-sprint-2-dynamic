@@ -1,4 +1,5 @@
 #pragma once
+#include <tuple>
 
 namespace stdx::details {
 
@@ -11,8 +12,11 @@ struct scan_error {
 // Шаблонный класс для хранения результатов успешного сканирования
 
 template <typename... Ts>
-struct scan_result {
-    // здесь ваш код
+struct scan_result 
+{
+    std::tuple<Ts...> vals;
+    size_t Size() const { return sizeof...(Ts);}
+
 };
 
 } // namespace stdx::details
