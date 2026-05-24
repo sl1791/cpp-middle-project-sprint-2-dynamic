@@ -44,7 +44,10 @@ requires std::is_same_v<T, float> ||
     return std::regex_match(std::string(s), pattern);
 }
 
+template<typename T>
 static constexpr bool IsStringFormat(const std::string_view& s) 
+requires std::is_same_v<T, std::string> || 
+    std::is_same_v<T, std::string_view>
 {
     static const std::regex pattern(R"(^(\s*|%s)$)");
     return std::regex_match(std::string(s), pattern);
@@ -79,9 +82,10 @@ requires std::is_same_v<T, int8_t> ||
 
 template <typename T>
 std::expected<T, scan_error> parse_value_with_format(std::string_view input, std::string_view fmt) 
-requires std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>
+requires std::is_same_v<T, std::string> || 
+    std::is_same_v<T, std::string_view>
 {
-    if (!IsStringFormat(fmt)) 
+    if (!IsStringFormat<T>(fmt)) 
         return std::unexpected(scan_error{std::format("'{}' format does not match a string data type.", fmt)});
 
     T val(input);

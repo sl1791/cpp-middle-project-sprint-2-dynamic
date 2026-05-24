@@ -19,7 +19,7 @@ std::unique_ptr<details::scan_error> ScanVals(Tpl& scanRes, cvec& input, cvec& f
 {
     constexpr size_t index = std::tuple_size_v<Tpl> - sizeof...(Rest) - 1;
 
-    std::print("ScanVals {} '{}' '{}'\n", index, input[index], format[index]);
+    //std::print("ScanVals {} '{}' '{}'\n", index, input[index], format[index]);
 
     auto parseRes = details::parse_value_with_format<First>(input[index], format[index]);
     if (!parseRes)
@@ -47,6 +47,7 @@ scan(std::string_view input, std::string_view format)
         ScanVals<std::tuple<Ts...>, Ts...>(scanRes.vals, inp, form);
     if(err)
         return std::unexpected(*err);
+
     return scanRes;
 }
 
